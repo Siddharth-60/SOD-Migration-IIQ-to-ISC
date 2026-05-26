@@ -325,6 +325,10 @@ def write_summary(results):
 
 
 def migrate_policies():
+    log.info("=" * 70)
+    log.info(f"  RUN STARTED  :  {RUN_TS}")
+    log.info("=" * 70)
+
     # ── Startup checks ─────────────────────────────────────────────────────────
     missing_env = [v for v in ("BASE_URL", "CLIENT_ID", "CLIENT_SECRET") if not os.getenv(v)]
     if missing_env:
@@ -497,11 +501,13 @@ def migrate_policies():
     skipped   = (out_df["Status"] == "SKIPPED").sum()
     failed    = out_df["Status"].isin(["FAILED", "ERROR"]).sum()
 
-    log.info("=" * 60)
-    log.info(f"Done — {success} created, {updated} updated, {skipped} skipped (no changes), {failed} failed out of {len(results)} total.")
-    log.info("Details  → logs/migration.log")
-    log.info("Summary  → logs/summary.log")
-    log.info("Results  → output/migration_results.csv")
+    log.info("=" * 70)
+    log.info(f"  RUN COMPLETED : {RUN_TS}")
+    log.info(f"  Created: {success}  |  Updated: {updated}  |  Skipped: {skipped}  |  Failed: {failed}  |  Total: {len(results)}")
+    log.info("  Details  → logs/migration.log")
+    log.info("  Summary  → logs/summary.log")
+    log.info("  Results  → output/migration_results.csv")
+    log.info("=" * 70)
 
     write_summary(results)
 
