@@ -153,6 +153,7 @@ def get_source_id(token, source_name):
 # Detected endpoint is cached globally so probing only happens once per run.
 def _detect_entitlement_endpoint(token):
     global _entitlement_endpoint
+    probe_results = []
     for path in ENTITLEMENT_ENDPOINTS:
         resp = requests.get(
             f"{BASE_URL}/{path}",
@@ -160,12 +161,16 @@ def _detect_entitlement_endpoint(token):
             params={"limit": 1},
             timeout=REQUEST_TIMEOUT,
         )
-        log.debug(f"  Probing /{path} → HTTP {resp.status_code}")
+        probe_results.append(f"/{path} → HTTP {resp.status_code}")
+        log.warning(f"  Probing /{path} → HTTP {resp.status_code}")
         if resp.status_code == 200:
             _entitlement_endpoint = path
             log.info(f"  Entitlement endpoint detected: /{path}")
             return
-    raise ValueError("No working entitlement endpoint found — tried: " + ", ".join(ENTITLEMENT_ENDPOINTS))
+    raise ValueError(
+        "No working entitlement endpoint found. Probe results: " + ", ".join(probe_results) +
+        ". Check that your API client has the 'idn:entitlement:read' scope enabled in ISC."
+    )
 
 
 def get_entitlement(token, app_name, entitlement_name):
