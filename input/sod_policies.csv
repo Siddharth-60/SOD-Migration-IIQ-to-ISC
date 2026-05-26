@@ -1,0 +1,8 @@
+PolicyName,PolicyOwner,ViolationOwner,Description,State,Left_CriteriaName,Left_Application,Left_Entitlements,Right_CriteriaName,Right_Application,Right_Entitlements
+TestSOD1,ISC Administrator,BG: Approval Hierarchy Application - AHA Governance Group,AHA SOD Policy,ENFORCED,Requestor Access,BG: Approval Hierarchy Application - AHA,Requestor:L63,Legal Entity Approver Access,BG: Approval Hierarchy Application - AHA,Quarterly Reviewer:
+TestSOD2,ISC Administrator,BG: Approval Hierarchy Application - AHA Governance Group,AHA SOD Policy,ENFORCED,Requestor Access,BG: Approval Hierarchy Application - AHA,"Requestor:L63
+Requestor:L74
+Requestor:P14
+Requestor:L80",Legal Entity Approver Access,BG: Approval Hierarchy Application - AHA,"Legal Entity Approver:M44
+Legal Entity Approver:C02
+Legal Entity Approver:C03"

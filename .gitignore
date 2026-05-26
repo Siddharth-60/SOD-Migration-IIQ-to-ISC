@@ -1,0 +1,18 @@
+# Credentials — never commit
+.env
+
+# Python virtual environment
+venv/
+
+# Runtime generated — logs and results
+logs/*
+output/*
+
+# Keep the folders tracked so the script can write to them
+!logs/.gitkeep
+!output/.gitkeep
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
