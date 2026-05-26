@@ -19,27 +19,6 @@ This tool reads a list of Segregation of Duties (SOD) policies from a spreadshee
 
 ---
 
-## Folder Structure
-
-When you unzip the file, you should see this structure:
-
-```
-SOD_Policy/
-├── input/
-│   └── sod_policies.csv        ← Your input file (edit this)
-├── output/
-│   └── migration_results.csv   ← Results after running (auto-generated)
-├── logs/
-│   ├── migration.log           ← Detailed log (auto-generated)
-│   └── summary.log             ← Summary log (auto-generated)
-├── main.py                     ← The migration script (do not edit)
-├── requirements.txt            ← Dependencies list (do not edit)
-├── .env                        ← Your credentials file (you must fill this in)
-└── README.md                   ← This file
-```
-
----
-
 ## Step 1 — Fill In Your Credentials
 
 Open the `.env` file in Notepad and fill in your details:
@@ -79,19 +58,7 @@ Open `input/sod_policies.csv` in **Microsoft Excel**.
 
 Each row is one SOD policy. Fill in the following columns:
 
-| Column | What to Enter | Example |
-|---|---|---|
-| **PolicyName** | Unique name for the policy | `BG: Finance SOD` |
-| **PolicyOwner** | Full display name of the policy owner identity | `ISC Administrator` |
-| **ViolationOwner** | Full name of the governance group or identity who handles violations | `Finance Governance Group` |
-| **Description** | Short description of what this policy does | `Finance SOD Policy` |
-| **State** | Either `ENFORCED` or `INACTIVE` | `ENFORCED` |
-| **Left_CriteriaName** | Label for the left side of the conflict | `Requestor Access` |
-| **Left_Application** | Exact name of the source/app for left entitlements | `BG: Approval Hierarchy Application - AHA` |
-| **Left_Entitlements** | One entitlement per line inside the cell *(see tip below)* | `Requestor:L63` |
-| **Right_CriteriaName** | Label for the right side of the conflict | `Legal Entity Approver Access` |
-| **Right_Application** | Exact name of the source/app for right entitlements | `BG: Approval Hierarchy Application - AHA` |
-| **Right_Entitlements** | One entitlement per line inside the cell *(see tip below)* | `Legal Entity Approver:M44` |
+![alt text](image.png)
 
 ### How to Enter Multiple Entitlements in One Cell (Excel)
 
@@ -112,19 +79,16 @@ Requestor:L80
 
 ## Step 4 — Run the Migration
 
-Open Command Prompt in the `SOD_Policy` folder (same as Step 2).
+Open Command Prompt in the `SOD_Policy` folder, activate the environment and run:
 
-Activate the environment first:
 ```
 venv\Scripts\activate
-```
-
-Then run the script:
-```
 python main.py
 ```
 
 You will see progress printed on screen as each policy is processed.
+
+![alt text](image-1.png)
 
 ---
 
@@ -163,15 +127,6 @@ You can safely re-run the script on the same file at any time:
 - Policies that **already exist and have not changed** → `SKIPPED` (nothing happens)
 - Policies that **already exist but you changed something** in the CSV → `UPDATED`
 - Policies that **failed last time** and you have now fixed the data → will be retried and created
-
----
-
-## How the Script Works (Technical Notes)
-
-- **Entitlement API auto-detection** — The script automatically detects which API version your ISC tenant supports (tries `v2026 → v2025 → beta → v3` in order). No configuration needed — it picks the right one for your tenant automatically.
-- **Violation owner fallback** — If the name in `ViolationOwner` is not found as a governance group, the script automatically searches for it as an identity instead. A warning is logged so you know it fell back.
-- **Token refresh** — For large files (500–700 policies), the access token is automatically refreshed every 50 policies so it never expires mid-run.
-- **Change detection** — On re-runs, the script compares what is in ISC against your CSV. Only policies with actual changes are updated — the rest are skipped.
 
 ---
 
