@@ -47,10 +47,18 @@ summary_handler.setFormatter(logging.Formatter("%(message)s"))
 summary_log.addHandler(summary_handler)
 # ──────────────────────────────────────────────────────────────────────────────
 
-_identity_cache    = {}
-_gov_group_cache   = {}
-_source_cache      = {}
-_entitlement_cache = {}
+_identity_cache       = {}
+_gov_group_cache      = {}
+_source_cache         = {}
+_entitlement_cache    = {}
+_entitlement_endpoint = None  # detected once at first use, reused for all subsequent calls
+
+ENTITLEMENT_ENDPOINTS = [
+    "v2026/entitlements",
+    "v2025/entitlements",
+    "beta/entitlements",
+    "v3/entitlements",
+]
 
 
 def _is_blank(val):
@@ -139,30 +147,43 @@ def get_source_id(token, source_name):
     return items[0]["id"]
 
 
-# GET /beta/entitlements — falls back to /v3/entitlements if beta returns 404 (tenant-dependent availability)
-# X-SailPoint-Experimental required for beta; filter on source.id not source.name
-def get_entitlement(token, app_name, entitlement_name):
-    cache_key = (app_name, entitlement_name)
-    if cache_key in _entitlement_cache:
-        return _entitlement_cache[cache_key]
-    source_id = get_source_id(token, app_name)
-    params = {"filters": f'name eq "{entitlement_name}" and source.id eq "{source_id}"', "limit": 1}
-
-    resp = requests.get(
-        f"{BASE_URL}/beta/entitlements",
-        headers=experimental_headers(token),
-        params=params,
-        timeout=REQUEST_TIMEOUT,
-    )
-
-    if resp.status_code == 404:
-        log.debug(f"  /beta/entitlements returned 404 — falling back to /v3/entitlements for '{entitlement_name}'")
+# Probe entitlement endpoints in order (v2026 → v2025 → beta → v3) on first use.
+# X-SailPoint-Experimental header is used for all versions — v2026 requires it, others accept it fine.
+# Detected endpoint is cached globally so probing only happens once per run.
+def _detect_entitlement_endpoint(token, params):
+    global _entitlement_endpoint
+    for path in ENTITLEMENT_ENDPOINTS:
         resp = requests.get(
-            f"{BASE_URL}/v3/entitlements",
-            headers=auth_headers(token),
+            f"{BASE_URL}/{path}",
+            headers=experimental_headers(token),
             params=params,
             timeout=REQUEST_TIMEOUT,
         )
+        if resp.status_code != 404:
+            _entitlement_endpoint = path
+            log.info(f"  Entitlement endpoint detected: /{path}")
+            return resp
+    raise ValueError("No working entitlement endpoint found — tried: " + ", ".join(ENTITLEMENT_ENDPOINTS))
+
+
+def get_entitlement(token, app_name, entitlement_name):
+    global _entitlement_endpoint
+    cache_key = (app_name, entitlement_name)
+    if cache_key in _entitlement_cache:
+        return _entitlement_cache[cache_key]
+
+    source_id = get_source_id(token, app_name)
+    params = {"filters": f'name eq "{entitlement_name}" and source.id eq "{source_id}"', "limit": 1}
+
+    if _entitlement_endpoint:
+        resp = requests.get(
+            f"{BASE_URL}/{_entitlement_endpoint}",
+            headers=experimental_headers(token),
+            params=params,
+            timeout=REQUEST_TIMEOUT,
+        )
+    else:
+        resp = _detect_entitlement_endpoint(token, params)
 
     resp.raise_for_status()
     items = resp.json()
