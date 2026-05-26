@@ -166,6 +166,15 @@ You can safely re-run the script on the same file at any time:
 
 ---
 
+## How the Script Works (Technical Notes)
+
+- **Entitlement API auto-detection** — The script automatically detects which API version your ISC tenant supports (tries `v2026 → v2025 → beta → v3` in order). No configuration needed — it picks the right one for your tenant automatically.
+- **Violation owner fallback** — If the name in `ViolationOwner` is not found as a governance group, the script automatically searches for it as an identity instead. A warning is logged so you know it fell back.
+- **Token refresh** — For large files (500–700 policies), the access token is automatically refreshed every 50 policies so it never expires mid-run.
+- **Change detection** — On re-runs, the script compares what is in ISC against your CSV. Only policies with actual changes are updated — the rest are skipped.
+
+---
+
 ## Common Issues
 
 **"python is not recognized"**
@@ -183,11 +192,17 @@ The entitlement name does not exist in ISC under that application. Check the exa
 **Policy shows ERROR — Source not found: 'My App'**
 The application name in `Left_Application` or `Right_Application` does not exactly match the source name in ISC.
 
+**Policy shows ERROR — No working entitlement endpoint found**
+The script tried all API versions and none responded. This usually means your ISC credentials do not have permission to access entitlements, or the tenant URL in `.env` is incorrect.
+
 **Policy shows SKIPPED — missing/empty field 'State'**
 A required column in that row is blank. Fill it in and re-run.
 
 **".env file not found" or credentials error**
 Make sure you filled in the `.env` file as described in Step 1 and that it is saved in the same folder as `main.py`.
+
+**Violation owner warning in logs**
+If you see `Governance group 'X' not found. Falling back to IDENTITY` in the logs, it means the name in `ViolationOwner` was not found as a governance group but was found as an identity. Verify this is the correct person or group name.
 
 ---
 
