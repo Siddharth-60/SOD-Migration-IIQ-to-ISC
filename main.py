@@ -317,7 +317,8 @@ def write_summary(results):
         "-" * 100,
     ]
     for r in results:
-        lines.append(f"{r['PolicyName']:<45} {r['Status']:<10} {r['PolicyId']:<38} {r['Error']}")
+        error_text = r["Error"] if r["Error"] else "No errors"
+        lines.append(f"{r['PolicyName']:<45} {r['Status']:<10} {r['PolicyId']:<38} {error_text}")
     lines.append("=" * 100)
 
     for line in lines:
