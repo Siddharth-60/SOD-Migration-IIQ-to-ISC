@@ -149,20 +149,22 @@ def get_source_id(token, source_name):
 
 # Probe entitlement endpoints in order (v2026 → v2025 → beta → v3) on first use.
 # X-SailPoint-Experimental header is used for all versions — v2026 requires it, others accept it fine.
+# Probes with limit=1 only (no filters) to check route availability, then uses detected endpoint for real queries.
 # Detected endpoint is cached globally so probing only happens once per run.
-def _detect_entitlement_endpoint(token, params):
+def _detect_entitlement_endpoint(token):
     global _entitlement_endpoint
     for path in ENTITLEMENT_ENDPOINTS:
         resp = requests.get(
             f"{BASE_URL}/{path}",
             headers=experimental_headers(token),
-            params=params,
+            params={"limit": 1},
             timeout=REQUEST_TIMEOUT,
         )
-        if resp.status_code != 404:
+        log.debug(f"  Probing /{path} → HTTP {resp.status_code}")
+        if resp.status_code == 200:
             _entitlement_endpoint = path
             log.info(f"  Entitlement endpoint detected: /{path}")
-            return resp
+            return
     raise ValueError("No working entitlement endpoint found — tried: " + ", ".join(ENTITLEMENT_ENDPOINTS))
 
 
@@ -175,15 +177,15 @@ def get_entitlement(token, app_name, entitlement_name):
     source_id = get_source_id(token, app_name)
     params = {"filters": f'name eq "{entitlement_name}" and source.id eq "{source_id}"', "limit": 1}
 
-    if _entitlement_endpoint:
-        resp = requests.get(
-            f"{BASE_URL}/{_entitlement_endpoint}",
-            headers=experimental_headers(token),
-            params=params,
-            timeout=REQUEST_TIMEOUT,
-        )
-    else:
-        resp = _detect_entitlement_endpoint(token, params)
+    if not _entitlement_endpoint:
+        _detect_entitlement_endpoint(token)
+
+    resp = requests.get(
+        f"{BASE_URL}/{_entitlement_endpoint}",
+        headers=experimental_headers(token),
+        params=params,
+        timeout=REQUEST_TIMEOUT,
+    )
 
     resp.raise_for_status()
     items = resp.json()
