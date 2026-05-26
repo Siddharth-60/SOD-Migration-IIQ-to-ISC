@@ -139,19 +139,31 @@ def get_source_id(token, source_name):
     return items[0]["id"]
 
 
-# GET /beta/entitlements — v3/entitlements returns 404 on this tenant
-# X-SailPoint-Experimental required; filter on source.id not source.name
+# GET /beta/entitlements — falls back to /v3/entitlements if beta returns 404 (tenant-dependent availability)
+# X-SailPoint-Experimental required for beta; filter on source.id not source.name
 def get_entitlement(token, app_name, entitlement_name):
     cache_key = (app_name, entitlement_name)
     if cache_key in _entitlement_cache:
         return _entitlement_cache[cache_key]
     source_id = get_source_id(token, app_name)
+    params = {"filters": f'name eq "{entitlement_name}" and source.id eq "{source_id}"', "limit": 1}
+
     resp = requests.get(
         f"{BASE_URL}/beta/entitlements",
         headers=experimental_headers(token),
-        params={"filters": f'name eq "{entitlement_name}" and source.id eq "{source_id}"', "limit": 1},
+        params=params,
         timeout=REQUEST_TIMEOUT,
     )
+
+    if resp.status_code == 404:
+        log.debug(f"  /beta/entitlements returned 404 — falling back to /v3/entitlements for '{entitlement_name}'")
+        resp = requests.get(
+            f"{BASE_URL}/v3/entitlements",
+            headers=auth_headers(token),
+            params=params,
+            timeout=REQUEST_TIMEOUT,
+        )
+
     resp.raise_for_status()
     items = resp.json()
     if not items:
@@ -432,6 +444,10 @@ def migrate_policies():
             record.update({"Status": "ERROR", "Error": msg})
         except requests.ConnectionError as e:
             msg = f"Connection error: {e}"
+            log.error(f"  ERROR — {msg}")
+            record.update({"Status": "ERROR", "Error": msg})
+        except requests.HTTPError as e:
+            msg = f"API error: {e}"
             log.error(f"  ERROR — {msg}")
             record.update({"Status": "ERROR", "Error": msg})
         except ValueError as e:
